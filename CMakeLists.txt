@@ -298,7 +298,7 @@ if (LLAMA_METAL)
 
     add_custom_command(
       OUTPUT ggml_metal_file.c
-      COMMAND embedfile ggml_metal_file bin/ggml-metal.metal
+      COMMAND bin/embedfile ggml_metal_file bin/ggml-metal.metal
       DEPENDS ggml-metal.metal)
 
     find_library(FOUNDATION_LIBRARY         Foundation              REQUIRED)
