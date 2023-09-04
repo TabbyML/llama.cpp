@@ -294,13 +294,6 @@ if (LLAMA_CUBLAS)
 endif()
 
 if (LLAMA_METAL)
-    add_executable(embedfile embedfile.c)
-
-    add_custom_command(
-      OUTPUT ggml_metal_file.c
-      COMMAND bin/embedfile ggml_metal_file bin/ggml-metal.metal
-      DEPENDS ggml-metal.metal)
-
     find_library(FOUNDATION_LIBRARY         Foundation              REQUIRED)
     find_library(METAL_FRAMEWORK            Metal                   REQUIRED)
     find_library(METALKIT_FRAMEWORK         MetalKit                REQUIRED)
