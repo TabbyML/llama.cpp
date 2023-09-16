@@ -1,8 +1,3 @@
-// defines MAP_ANONYMOUS
-#ifndef _GNU_SOURCE
-#define _GNU_SOURCE
-#endif
-
 #include "ggml-alloc.h"
 #include "ggml.h"
 #include <assert.h>
@@ -134,6 +129,10 @@ static size_t ggml_allocr_get_alloc_size(struct ggml_allocr * alloc, struct ggml
 static bool ggml_allocr_is_own(struct ggml_allocr * alloc, const struct ggml_tensor * tensor) {
     void * ptr = tensor->data;
     return ptr >= alloc->data && (char *)ptr < (char *)alloc->data + alloc->max_size;
+}
+
+static bool ggml_is_view(struct ggml_tensor * t) {
+    return t->view_src != NULL;
 }
 
 void ggml_allocr_alloc(struct ggml_allocr * alloc, struct ggml_tensor * tensor) {
@@ -343,8 +342,8 @@ static void free_vmem(void * base_addr, size_t size) {
 
 // allocate uncommitted virtual memory to measure the size of the graph
 static void alloc_measure_vmem(void ** base_addr, size_t * size) {
-    // 1TB for 64-bit, 1GB for 32-bit
-    *size = sizeof(void *) == 4 ? 1ULL<<30 : 1ULL<<40;
+    // 128GB for 64-bit, 1GB for 32-bit
+    *size = sizeof(void *) == 4 ? 1ULL<<30 : 1ULL<<37;
     do {
         *base_addr = alloc_vmem(*size);
         if (*base_addr != NULL) {
@@ -403,10 +402,6 @@ bool ggml_allocr_is_measure(struct ggml_allocr * alloc) {
 }
 
 //////////// compute graph allocator
-
-static bool ggml_is_view(struct ggml_tensor * t) {
-    return t->view_src != NULL;
-}
 
 static bool ggml_are_same_layout(const struct ggml_tensor * a, const struct ggml_tensor * b) {
     if (a->type != b->type) {
