@@ -189,13 +189,12 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
 #if 1
     NSString * const msl_library_source = [[NSString alloc] initWithBytes: ggml_metal_file length: ggml_metal_file_len encoding: NSASCIIStringEncoding];
     // compile from source string and show compile log
-    // compile from source string and show compile log
     {
         NSError * error = nil;
 
         ctx->library = [ctx->device newLibraryWithSource:msl_library_source options:nil error:&error];
         if (error) {
-            metal_printf("%s: error: %s\n", __func__, [[error description] UTF8String]);
+            GGML_METAL_LOG_INFO("%s: error: %s\n", __func__, [[error description] UTF8String]);
             return NULL;
         }
     }
