@@ -109,8 +109,8 @@ struct ggml_metal_context {
 #undef GGML_METAL_DECL_KERNEL
 };
 
-const char ggml_metal_file[];
-const size_t ggml_metal_file_len;
+extern const char ggml_metal_file[];
+extern const size_t ggml_metal_file_len;
 
 // MSL code
 // TODO: move the contents here when ready
