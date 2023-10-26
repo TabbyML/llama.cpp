@@ -128,7 +128,7 @@ extern const size_t ggml_metal_file_len;
 // MSL code
 // TODO: move the contents here when ready
 //       for now it is easier to work in a separate file
-static NSString * const msl_library_source = @"see metal.metal";
+// static NSString * const msl_library_source = @"see metal.metal";
 
 // Here to assist with NSBundle Path Hack
 @interface GGMLMetalClass : NSObject
@@ -247,6 +247,7 @@ struct ggml_metal_context * ggml_metal_init(int n_cb) {
             return NULL;
         }
     }
+#endif
 
     // load kernels
     {
