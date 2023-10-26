@@ -41,8 +41,7 @@ if hasattr(faulthandler, 'register') and hasattr(signal, 'SIGUSR1'):
 
 NDArray: TypeAlias = 'np.ndarray[Any, Any]'
 
-ARCH=gguf.MODEL_ARCH.LLAMA
-NAMES=gguf.MODEL_TENSOR_NAMES[ARCH]
+ARCH = gguf.MODEL_ARCH.LLAMA
 
 DEFAULT_CONCURRENCY = 8
 #
@@ -339,29 +338,15 @@ class BpeVocab:
     def bpe_tokens(self) -> Iterable[tuple[bytes, float, gguf.TokenType]]:
         tokenizer = self.bpe_tokenizer
         from transformers.models.gpt2 import tokenization_gpt2  # type: ignore[import]
-        byte_encoder = tokenization_gpt2.bytes_to_unicode()
-        byte_decoder = {v: k for k, v in byte_encoder.items()}
-        score = 0.0
-        for i, item in enumerate(tokenizer):
-            text: bytes = item.encode("utf-8")
-            # FIXME: These shouldn't be hardcoded, but it's probably better than the current behavior?
-            if i <= 258 and text.startswith(b'<') and text.endswith(b'>'):
-                if i == 0 and text == b'<unk>':
-                    toktype = gguf.TokenType.UNKNOWN
-                elif i == 1 or i == 2:
-                    toktype = gguf.TokenType.CONTROL
-                elif i >= 3 and text.startswith(b'<0x'):
-                    toktype = gguf.TokenType.BYTE
-                else:
-                    toktype = gguf.TokenType.NORMAL
-            else:
-                toktype = gguf.TokenType.NORMAL
-            yield text, score, toktype
+        reverse_vocab = {id: encoded_tok for encoded_tok, id in tokenizer.items()}
+
+        for i, _ in enumerate(tokenizer):
+            yield reverse_vocab[i], 0.0, gguf.TokenType.NORMAL
 
     def added_tokens(self) -> Iterable[tuple[bytes, float, gguf.TokenType]]:
         for text in self.added_tokens_list:
             score = -1000.0
-            yield text.encode("utf-8"), score, gguf.TokenType.USER_DEFINED
+            yield text.encode("utf-8"), score, gguf.TokenType.CONTROL
 
     def all_tokens(self) -> Iterable[tuple[bytes, float, gguf.TokenType]]:
         yield from self.bpe_tokens()
@@ -384,7 +369,7 @@ class SentencePieceVocab:
         expected_ids = list(range(vocab_size, vocab_size + len(added_tokens)))
         actual_ids   = sorted(added_tokens.values())
         if expected_ids != actual_ids:
-            raise Exception(f"Expected added token IDs to be sequential and start at {len(added_tokens)}; got {actual_ids}")
+            raise Exception(f"Expected added token IDs to be sequential and start at {vocab_size}; got {actual_ids}")
 
         items = sorted(added_tokens.items(), key=lambda text_idx: text_idx[1])
         self.added_tokens_list = [text for (text, idx) in items]
@@ -818,8 +803,8 @@ def check_vocab_size(params: Params, vocab: Vocab) -> None:
 
 
 class OutputFile:
-    def __init__(self, fname_out: Path) -> None:
-        self.gguf = gguf.GGUFWriter(fname_out, gguf.MODEL_ARCH_NAMES[ARCH])
+    def __init__(self, fname_out: Path, endianess:gguf.GGUFEndian=gguf.GGUFEndian.LITTLE) -> None:
+        self.gguf = gguf.GGUFWriter(fname_out, gguf.MODEL_ARCH_NAMES[ARCH], endianess=endianess)
 
     def add_meta_arch(self, params: Params) -> None:
         name = "LLaMA"
@@ -890,10 +875,10 @@ class OutputFile:
         self.gguf.close()
 
     @staticmethod
-    def write_vocab_only(fname_out: Path, params: Params, vocab: Vocab, svocab: gguf.SpecialVocab) -> None:
+    def write_vocab_only(fname_out: Path, params: Params, vocab: Vocab, svocab: gguf.SpecialVocab, endianess:gguf.GGUFEndian=gguf.GGUFEndian.LITTLE) -> None:
         check_vocab_size(params, vocab)
 
-        of = OutputFile(fname_out)
+        of = OutputFile(fname_out, endianess=endianess)
 
         # meta data
         of.add_meta_arch(params)
@@ -918,10 +903,10 @@ class OutputFile:
         return dt.quantize(arr)
 
     @staticmethod
-    def write_all(fname_out: Path, ftype: GGMLFileType, params: Params, model: LazyModel, vocab: Vocab, svocab: gguf.SpecialVocab, concurrency: int = DEFAULT_CONCURRENCY) -> None:
+    def write_all(fname_out: Path, ftype: GGMLFileType, params: Params, model: LazyModel, vocab: Vocab, svocab: gguf.SpecialVocab, concurrency: int = DEFAULT_CONCURRENCY, endianess=gguf.GGUFEndian.LITTLE) -> None:
         check_vocab_size(params, vocab)
 
-        of = OutputFile(fname_out)
+        of = OutputFile(fname_out, endianess=endianess)
 
         # meta data
         of.add_meta_arch(params)
@@ -953,7 +938,7 @@ class OutputFile:
         of.close()
 
 def pick_output_type(model: LazyModel, output_type_str: str | None) -> GGMLFileType:
-    wq_type = model[NAMES[gguf.MODEL_TENSOR.ATTN_Q].format(bid=0)+".weight"].data_type
+    wq_type = model[gguf.TENSOR_NAMES[gguf.MODEL_TENSOR.ATTN_Q].format(bid=0)+".weight"].data_type
 
     if output_type_str == "f32" or (output_type_str is None and wq_type == DT_F32):
         return GGMLFileType.AllF32
@@ -1138,8 +1123,9 @@ def main(args_in: list[str] | None = None) -> None:
     parser.add_argument("--vocabtype",   choices=["spm", "bpe"], help="vocab format (default: spm)", default="spm")
     parser.add_argument("--ctx",         type=int,               help="model training context (default: based on input)")
     parser.add_argument("--concurrency", type=int,               help=f"concurrency used for conversion (default: {DEFAULT_CONCURRENCY})", default = DEFAULT_CONCURRENCY)
-    args = parser.parse_args(args_in)
+    parser.add_argument("--bigendian",   action="store_true",    help="model is executed on big endian machine")
 
+    args = parser.parse_args(args_in)
     if args.dump_single:
         model_plus = lazy_load_file(args.model)
         do_dump_model(model_plus)
@@ -1153,6 +1139,9 @@ def main(args_in: list[str] | None = None) -> None:
     if args.dump:
         do_dump_model(model_plus)
         return
+    endianess = gguf.GGUFEndian.LITTLE
+    if args.bigendian:
+        endianess = gguf.GGUFEndian.BIG
 
     params = Params.load(model_plus)
     if params.n_ctx == -1:
@@ -1174,10 +1163,13 @@ def main(args_in: list[str] | None = None) -> None:
 
     vocab: Vocab
     if args.vocab_only:
-        assert args.outfile, "need --outfile if using --vocab-only"
+        if not args.outfile:
+            raise ValueError("need --outfile if using --vocab-only")
         # FIXME: Try to respect vocab_dir somehow?
         vocab = load_vocab(args.vocab_dir or args.model, args.vocabtype)
-        special_vocab = gguf.SpecialVocab(model_plus.paths[0].parent, load_merges = args.vocabtype == 'bpe')
+        special_vocab = gguf.SpecialVocab(model_plus.paths[0].parent,
+            load_merges = args.vocabtype == 'bpe',
+            n_vocab = vocab.vocab_size)
         outfile = args.outfile
         OutputFile.write_vocab_only(outfile, params, vocab, special_vocab)
         print(f"Wrote {outfile}")
@@ -1189,7 +1181,9 @@ def main(args_in: list[str] | None = None) -> None:
         vocab_dir = args.vocab_dir if args.vocab_dir else model_plus.paths[0].parent
         vocab = load_vocab(vocab_dir, args.vocabtype)
     # FIXME: Try to respect vocab_dir somehow?
-    special_vocab = gguf.SpecialVocab(model_plus.paths[0].parent, load_merges = args.vocabtype == 'bpe')
+    special_vocab = gguf.SpecialVocab(model_plus.paths[0].parent,
+        load_merges = args.vocabtype == 'bpe',
+        n_vocab = vocab.vocab_size)
 
     model   = model_plus.model
     model   = convert_model_names(model, params)
@@ -1200,7 +1194,7 @@ def main(args_in: list[str] | None = None) -> None:
     params.ftype = ftype
     print(f"Writing {outfile}, format {ftype}")
 
-    OutputFile.write_all(outfile, ftype, params, model, vocab, special_vocab, concurrency = args.concurrency)
+    OutputFile.write_all(outfile, ftype, params, model, vocab, special_vocab, concurrency = args.concurrency, endianess=endianess)
     print(f"Wrote {outfile}")
 
 

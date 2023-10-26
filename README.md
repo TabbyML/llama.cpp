@@ -5,17 +5,14 @@
 [![Actions Status](https://github.com/ggerganov/llama.cpp/workflows/CI/badge.svg)](https://github.com/ggerganov/llama.cpp/actions)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 
-[Roadmap](https://github.com/users/ggerganov/projects/7) / [Manifesto](https://github.com/ggerganov/llama.cpp/discussions/205) / [ggml](https://github.com/ggerganov/ggml)
+[Roadmap](https://github.com/users/ggerganov/projects/7) / [Project status](https://github.com/ggerganov/llama.cpp/discussions/3471) / [Manifesto](https://github.com/ggerganov/llama.cpp/discussions/205) / [ggml](https://github.com/ggerganov/ggml)
 
 Inference of [LLaMA](https://arxiv.org/abs/2302.13971) model in pure C/C++
 
 ### Hot topics
 
-- Parallel decoding + continuous batching support incoming: [#3228](https://github.com/ggerganov/llama.cpp/pull/3228) \
-  **Devs should become familiar with the new API**
-- Local Falcon 180B inference on Mac Studio
-
-  https://github.com/ggerganov/llama.cpp/assets/1991296/98abd4e8-7077-464c-ae89-aebabca7757e
+- LLaVA support: https://github.com/ggerganov/llama.cpp/pull/3436
+- ‼️ BPE tokenizer update: existing Falcon and Starcoder `.gguf` models will need to be reconverted: [#3252](https://github.com/ggerganov/llama.cpp/pull/3252)
 
 ----
 
@@ -88,17 +85,23 @@ as the main playground for developing new features for the [ggml](https://github
 - [X] [Vicuna](https://github.com/ggerganov/llama.cpp/discussions/643#discussioncomment-5533894)
 - [X] [Koala](https://bair.berkeley.edu/blog/2023/04/03/koala/)
 - [X] [OpenBuddy 🐶 (Multilingual)](https://github.com/OpenBuddy/OpenBuddy)
-- [X] [Pygmalion 7B / Metharme 7B](#using-pygmalion-7b--metharme-7b)
+- [X] [Pygmalion/Metharme](#using-pygmalion-7b--metharme-7b)
 - [X] [WizardLM](https://github.com/nlpxucan/WizardLM)
-- [X] [Baichuan-7B](https://huggingface.co/baichuan-inc/baichuan-7B) and its derivations (such as [baichuan-7b-sft](https://huggingface.co/hiyouga/baichuan-7b-sft))
-- [X] [Aquila-7B](https://huggingface.co/BAAI/Aquila-7B) / [AquilaChat-7B](https://huggingface.co/BAAI/AquilaChat-7B)
-- [X] Mistral AI v0.1
+- [X] [Baichuan 1 & 2](https://huggingface.co/models?search=baichuan-inc/Baichuan) + [derivations](https://huggingface.co/hiyouga/baichuan-7b-sft)
+- [X] [Aquila 1 & 2](https://huggingface.co/models?search=BAAI/Aquila)
+- [X] [Starcoder models](https://github.com/ggerganov/llama.cpp/pull/3187)
+- [X] [Mistral AI v0.1](https://huggingface.co/mistralai/Mistral-7B-v0.1)
+- [X] [Refact](https://huggingface.co/smallcloudai/Refact-1_6B-fim)
+- [X] [Persimmon 8B](https://github.com/ggerganov/llama.cpp/pull/3410)
+- [X] [MPT](https://github.com/ggerganov/llama.cpp/pull/3417)
+- [X] [Bloom](https://github.com/ggerganov/llama.cpp/pull/3553)
+
 
 **Bindings:**
 
 - Python: [abetlen/llama-cpp-python](https://github.com/abetlen/llama-cpp-python)
 - Go: [go-skynet/go-llama.cpp](https://github.com/go-skynet/go-llama.cpp)
-- Node.js: [withcatai/node-llama-cpp](https://github.com/withcatai/node-llama-cpp), [hlhr202/llama-node](https://github.com/hlhr202/llama-node)
+- Node.js: [withcatai/node-llama-cpp](https://github.com/withcatai/node-llama-cpp)
 - Ruby: [yoshoku/llama_cpp.rb](https://github.com/yoshoku/llama_cpp.rb)
 - Rust: [mdrokz/rust-llama.cpp](https://github.com/mdrokz/rust-llama.cpp)
 - C#/.NET: [SciSharp/LLamaSharp](https://github.com/SciSharp/LLamaSharp)
@@ -201,7 +204,7 @@ https://user-images.githubusercontent.com/1991296/224442907-7693d4be-acaa-4e01-8
 
 ## Usage
 
-Here are the steps for the LLaMA-7B model.
+Here are the end-to-end binary build and model conversion steps for the LLaMA-7B model.
 
 ### Get the Code
 
@@ -274,7 +277,7 @@ In order to build llama.cpp you have three different options.
 On MacOS, Metal is enabled by default. Using Metal makes the computation run on the GPU.
 To disable the Metal build at compile time use the `LLAMA_NO_METAL=1` flag or the `LLAMA_METAL=OFF` cmake option.
 
-When built with Metal support, you can explicitly disable GPU inference with the `--gpu-layers|-ngl 0` command-line
+When built with Metal support, you can explicitly disable GPU inference with the `--n-gpu-layers|-ngl 0` command-line
 argument.
 
 ### MPI Build
@@ -375,7 +378,7 @@ Building the program with BLAS support may lead to some performance improvements
 
 - #### cuBLAS
 
-  This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure to have the CUDA toolkit installed. You can download it from your Linux distro's package manager or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads).
+  This provides BLAS acceleration using the CUDA cores of your Nvidia GPU. Make sure to have the CUDA toolkit installed. You can download it from your Linux distro's package manager (e.g. `apt install nvidia-cuda-toolkit`) or from here: [CUDA Toolkit](https://developer.nvidia.com/cuda-downloads).
   - Using `make`:
     ```bash
     make LLAMA_CUBLAS=1
@@ -568,6 +571,18 @@ python3 convert.py models/7B/
 
 When running the larger models, make sure you have enough disk space to store all the intermediate files.
 
+### Running on Windows with prebuilt binaries
+
+You will find prebuilt Windows binaries on the release page.
+
+Simply download and extract the latest zip package of choice: (e.g. `llama-b1380-bin-win-avx2-x64.zip`)
+
+From the unzipped folder, open a terminal/cmd window here and place a pre-converted `.gguf` model file. Test out the main example like so:
+
+```
+.\main -m llama-2-7b.Q4_0.gguf -n 128
+```
+
 ### Memory/Disk Requirements
 
 As the models are currently fully loaded into memory, you will need adequate disk space to save them and sufficient RAM to load them. At the moment, memory and disk requirements are the same.
@@ -610,6 +625,18 @@ For more information, see [https://huggingface.co/docs/transformers/perplexity](
 
 The perplexity measurements in table above are done against the `wikitext2` test dataset (https://paperswithcode.com/dataset/wikitext-2), with context length of 512.
 The time per token is measured on a MacBook M1 Pro 32GB RAM using 4 and 8 threads.
+
+#### How to run
+
+1. Download/extract: https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-raw-v1.zip?ref=salesforce-research
+2. Run `./perplexity -m models/7B/ggml-model-q4_0.gguf -f wiki.test.raw`
+3. Output:
+```
+perplexity : calculating perplexity over 655 chunks
+24.43 seconds per pass - ETA 4.45 hours
+[1]4.5970,[2]5.1807,[3]6.0382,...
+```
+And after 4.45 hours, you will have the final perplexity.
 
 ### Interactive mode
 
@@ -661,6 +688,8 @@ PROMPT_TEMPLATE=./prompts/chat-with-bob.txt PROMPT_CACHE_FILE=bob.prompt.bin \
 ```
 
 The `grammars/` folder contains a handful of sample grammars. To write your own, check out the [GBNF Guide](./grammars/README.md).
+
+For authoring more complex JSON grammars, you can also check out https://grammar.intrinsiclabs.ai/, a browser app that lets you write TypeScript interfaces which it compiles to GBNF grammars that you can save for local use. Note that the app is built and maintained by members of the community, please file any issues or FRs on [its repo](http://github.com/intrinsiclabsai/gbnfgen) and not this one.
 
 ### Instruction mode with Alpaca
 
@@ -770,18 +799,6 @@ If your issue is with model generation quality, then please at least scan the fo
 - GPT-3.5 / InstructGPT / ChatGPT:
     - [Aligning language models to follow instructions](https://openai.com/research/instruction-following)
     - [Training language models to follow instructions with human feedback](https://arxiv.org/abs/2203.02155)
-
-#### How to run
-
-1. Download/extract: https://s3.amazonaws.com/research.metamind.io/wikitext/wikitext-2-raw-v1.zip?ref=salesforce-research
-2. Run `./perplexity -m models/7B/ggml-model-q4_0.gguf -f wiki.test.raw`
-3. Output:
-```
-perplexity : calculating perplexity over 655 chunks
-24.43 seconds per pass - ETA 4.45 hours
-[1]4.5970,[2]5.1807,[3]6.0382,...
-```
-And after 4.45 hours, you will have the final perplexity.
 
 ### Android
 
@@ -945,7 +962,6 @@ docker run --gpus all -v /path/to/models:/models local/llama.cpp:light-cuda -m /
 
 - [main](./examples/main/README.md)
 - [server](./examples/server/README.md)
-- [embd-input](./examples/embd-input/README.md)
 - [jeopardy](./examples/jeopardy/README.md)
 - [BLIS](./docs/BLIS.md)
 - [Performance troubleshooting](./docs/token_generation_performance_tips.md)
