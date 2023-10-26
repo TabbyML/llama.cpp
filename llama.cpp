@@ -8917,7 +8917,7 @@ struct llama_context * llama_new_context_with_model(
 
 #ifdef GGML_USE_METAL
             if (model->n_gpu_layers > 0) {
-                ggml_metal_log_set_callback(llama_log_callback_default, g_state.log_callback_user_data);
+                ggml_metal_log_set_callback(g_state.log_callback, g_state.log_callback_user_data);
 
                 ctx->ctx_metal = ggml_metal_init(1);
                 if (!ctx->ctx_metal) {
