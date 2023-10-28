@@ -1578,12 +1578,14 @@ static void llama_kv_cache_seq_shift(
 enum llama_fver {
     GGUF_FILE_VERSION_V1 = 1,
     GGUF_FILE_VERSION_V2 = 2,
+    GGUF_FILE_VERSION_V3 = 3,
 };
 
 static const char * llama_file_version_name(llama_fver version) {
     switch (version) {
         case GGUF_FILE_VERSION_V1: return "GGUF V1 (support until nov 2023)";
-        case GGUF_FILE_VERSION_V2: return "GGUF V2 (latest)";
+        case GGUF_FILE_VERSION_V2: return "GGUF V2";
+        case GGUF_FILE_VERSION_V3: return "GGUF V3 (latest)";
     }
 
     return "unknown";
@@ -5958,8 +5960,6 @@ static int llama_decode_internal(
             ggml_cuda_assign_scratch_offset(node, (char*)node->data - (char *) lctx.buf_alloc.data);
         }
     }
-
-    ggml_cuda_set_mul_mat_q(cparams.mul_mat_q);
 
     // HACK: ggml-alloc may change the tensor backend when reusing a parent, so force output to be on the CPU here if needed
     if (!lctx.embedding.empty()) {
