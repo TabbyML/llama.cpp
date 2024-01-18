@@ -174,91 +174,17 @@ struct ggml_metal_context {
 
     int n_buffers;
     struct ggml_metal_buffer buffers[GGML_METAL_MAX_BUFFERS];
+
     struct ggml_metal_kernel kernels[GGML_METAL_MAX_KERNELS];
 
     bool support_simdgroup_reduction;
     bool support_simdgroup_mm;
-
-    int concur_list[GGML_MAX_CONCUR];
-    int concur_list_len;
-
-    // custom kernels
-#define GGML_METAL_DECL_KERNEL(name) \
-    id<MTLFunction>             function_##name; \
-    id<MTLComputePipelineState> pipeline_##name
-
-    GGML_METAL_DECL_KERNEL(add);
-    GGML_METAL_DECL_KERNEL(add_row); // TODO: avoid this extra kernel, instead extend the "add" kernel to support broadcast
-    GGML_METAL_DECL_KERNEL(mul);
-    GGML_METAL_DECL_KERNEL(mul_row); // TODO: avoid this extra kernel, instead extend the "mul" kernel to support broadcast
-    GGML_METAL_DECL_KERNEL(scale);
-    GGML_METAL_DECL_KERNEL(scale_4);
-    GGML_METAL_DECL_KERNEL(silu);
-    GGML_METAL_DECL_KERNEL(relu);
-    GGML_METAL_DECL_KERNEL(gelu);
-    GGML_METAL_DECL_KERNEL(soft_max);
-    GGML_METAL_DECL_KERNEL(soft_max_4);
-    GGML_METAL_DECL_KERNEL(diag_mask_inf);
-    GGML_METAL_DECL_KERNEL(diag_mask_inf_8);
-    GGML_METAL_DECL_KERNEL(get_rows_f32);
-    GGML_METAL_DECL_KERNEL(get_rows_f16);
-    GGML_METAL_DECL_KERNEL(get_rows_q4_0);
-    GGML_METAL_DECL_KERNEL(get_rows_q4_1);
-    GGML_METAL_DECL_KERNEL(get_rows_q5_0);
-    GGML_METAL_DECL_KERNEL(get_rows_q5_1);
-    GGML_METAL_DECL_KERNEL(get_rows_q8_0);
-    GGML_METAL_DECL_KERNEL(get_rows_q2_K);
-    GGML_METAL_DECL_KERNEL(get_rows_q3_K);
-    GGML_METAL_DECL_KERNEL(get_rows_q4_K);
-    GGML_METAL_DECL_KERNEL(get_rows_q5_K);
-    GGML_METAL_DECL_KERNEL(get_rows_q6_K);
-    GGML_METAL_DECL_KERNEL(rms_norm);
-    GGML_METAL_DECL_KERNEL(norm);
-    GGML_METAL_DECL_KERNEL(mul_mv_f32_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_f16_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_f16_f32_1row);
-    GGML_METAL_DECL_KERNEL(mul_mv_f16_f32_l4);
-    GGML_METAL_DECL_KERNEL(mul_mv_q4_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q4_1_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q5_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q5_1_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q8_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q2_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q3_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q4_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q5_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mv_q6_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_f32_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_f16_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q4_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q4_1_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q5_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q5_1_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q8_0_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q2_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q3_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q4_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q5_K_f32);
-    GGML_METAL_DECL_KERNEL(mul_mm_q6_K_f32);
-    GGML_METAL_DECL_KERNEL(rope_f32);
-    GGML_METAL_DECL_KERNEL(rope_f16);
-    GGML_METAL_DECL_KERNEL(alibi_f32);
-    GGML_METAL_DECL_KERNEL(cpy_f32_f16);
-    GGML_METAL_DECL_KERNEL(cpy_f32_f32);
-    GGML_METAL_DECL_KERNEL(cpy_f16_f16);
-    GGML_METAL_DECL_KERNEL(concat);
-    GGML_METAL_DECL_KERNEL(sqr);
-
-#undef GGML_METAL_DECL_KERNEL
 };
-
-extern const char ggml_metal_file[];
-extern const size_t ggml_metal_file_len;
 
 // MSL code
 // TODO: move the contents here when ready
 //       for now it is easier to work in a separate file
-// static NSString * const msl_library_source = @"see metal.metal";
+//static NSString * const msl_library_source = @"see metal.metal";
 
 // Here to assist with NSBundle Path Hack
 @interface GGMLMetalClass : NSObject
@@ -312,21 +238,19 @@ static void * ggml_metal_host_malloc(size_t n) {
 static struct ggml_metal_context * ggml_metal_init(int n_cb) {
     GGML_METAL_LOG_INFO("%s: allocating\n", __func__);
 
-    id<MTLDevice> device;
-    NSString * s;
-
-#if TARGET_OS_OSX
+#if TARGET_OS_OSX && !GGML_METAL_NDEBUG
     // Show all the Metal device instances in the system
     NSArray * devices = MTLCopyAllDevices();
-    for (device in devices) {
-        s = [device name];
+    for (id<MTLDevice> device in devices) {
+        NSString * s = [device name];
         GGML_METAL_LOG_INFO("%s: found device: %s\n", __func__, [s UTF8String]);
     }
+    [devices release]; // since it was created by a *Copy* C method
 #endif
 
     // Pick and show default Metal device
-    device = MTLCreateSystemDefaultDevice();
-    s = [device name];
+    id<MTLDevice> device = MTLCreateSystemDefaultDevice();
+    NSString * s = [device name];
     GGML_METAL_LOG_INFO("%s: picking default device: %s\n", __func__, [s UTF8String]);
 
     // Configure context
@@ -339,6 +263,7 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
     ctx->d_queue = dispatch_queue_create("ggml-metal", DISPATCH_QUEUE_CONCURRENT);
 
     // load library
+
 #if 1
     NSString * const msl_library_source = [[NSString alloc] initWithBytes: ggml_metal_file length: ggml_metal_file_len encoding: NSASCIIStringEncoding];
     // compile from source string and show compile log
@@ -391,22 +316,21 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
                 return NULL;
             }
 
-            // dictionary of preprocessor macros
-            NSMutableDictionary * prep = [NSMutableDictionary dictionary];
+            @autoreleasepool {
+                // dictionary of preprocessor macros
+                NSMutableDictionary * prep = [NSMutableDictionary dictionary];
 
 #ifdef GGML_QKK_64
-            prep[@"QK_K"] = @(64);
+                prep[@"QK_K"] = @(64);
 #endif
 
-            MTLCompileOptions* options = [MTLCompileOptions new];
-            options.preprocessorMacros = prep;
+                MTLCompileOptions* options = [MTLCompileOptions new];
+                options.preprocessorMacros = prep;
 
-            //[options setFastMathEnabled:false];
+                //[options setFastMathEnabled:false];
 
-            ctx->library = [ctx->device newLibraryWithSource:src options:options error:&error];
-
-            [options release];
-            [prep release];
+                ctx->library = [ctx->device newLibraryWithSource:src options:options error:&error];
+            }
         }
 
         if (error) {
@@ -414,93 +338,7 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
             return NULL;
         }
     }
-#endif
 
-    // load kernels
-    {
-        NSError * error = nil;
-
-        /*
-        GGML_METAL_LOG_INFO("%s: loaded %-32s %16p | th_max = %4d | th_width = %4d\n", __func__, "kernel_"#name, (void *) ctx->pipeline_##name, \
-                (int) ctx->pipeline_##name.maxTotalThreadsPerThreadgroup, \
-                (int) ctx->pipeline_##name.threadExecutionWidth); \
-        */
-#define GGML_METAL_ADD_KERNEL(name) \
-        ctx->function_##name = [ctx->library newFunctionWithName:@"kernel_"#name]; \
-        ctx->pipeline_##name = [ctx->device newComputePipelineStateWithFunction:ctx->function_##name error:&error]; \
-        if (error) { \
-            GGML_METAL_LOG_ERROR("%s: error: load pipeline error: %s\n", __func__, [[error description] UTF8String]); \
-            return NULL; \
-        }
-
-        GGML_METAL_ADD_KERNEL(add);
-        GGML_METAL_ADD_KERNEL(add_row);
-        GGML_METAL_ADD_KERNEL(mul);
-        GGML_METAL_ADD_KERNEL(mul_row);
-        GGML_METAL_ADD_KERNEL(scale);
-        GGML_METAL_ADD_KERNEL(scale_4);
-        GGML_METAL_ADD_KERNEL(silu);
-        GGML_METAL_ADD_KERNEL(relu);
-        GGML_METAL_ADD_KERNEL(gelu);
-        GGML_METAL_ADD_KERNEL(soft_max);
-        GGML_METAL_ADD_KERNEL(soft_max_4);
-        GGML_METAL_ADD_KERNEL(diag_mask_inf);
-        GGML_METAL_ADD_KERNEL(diag_mask_inf_8);
-        GGML_METAL_ADD_KERNEL(get_rows_f32);
-        GGML_METAL_ADD_KERNEL(get_rows_f16);
-        GGML_METAL_ADD_KERNEL(get_rows_q4_0);
-        GGML_METAL_ADD_KERNEL(get_rows_q4_1);
-        GGML_METAL_ADD_KERNEL(get_rows_q5_0);
-        GGML_METAL_ADD_KERNEL(get_rows_q5_1);
-        GGML_METAL_ADD_KERNEL(get_rows_q8_0);
-        GGML_METAL_ADD_KERNEL(get_rows_q2_K);
-        GGML_METAL_ADD_KERNEL(get_rows_q3_K);
-        GGML_METAL_ADD_KERNEL(get_rows_q4_K);
-        GGML_METAL_ADD_KERNEL(get_rows_q5_K);
-        GGML_METAL_ADD_KERNEL(get_rows_q6_K);
-        GGML_METAL_ADD_KERNEL(rms_norm);
-        GGML_METAL_ADD_KERNEL(norm);
-        GGML_METAL_ADD_KERNEL(mul_mv_f32_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_f16_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_f16_f32_1row);
-        GGML_METAL_ADD_KERNEL(mul_mv_f16_f32_l4);
-        GGML_METAL_ADD_KERNEL(mul_mv_q4_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q4_1_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q5_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q5_1_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q8_0_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q2_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q3_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q4_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q5_K_f32);
-        GGML_METAL_ADD_KERNEL(mul_mv_q6_K_f32);
-        if ([ctx->device supportsFamily:MTLGPUFamilyApple7]) {
-            GGML_METAL_ADD_KERNEL(mul_mm_f32_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_f16_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q4_0_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q4_1_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q5_0_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q5_1_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q8_0_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q2_K_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q3_K_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q4_K_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q5_K_f32);
-            GGML_METAL_ADD_KERNEL(mul_mm_q6_K_f32);
-        }
-        GGML_METAL_ADD_KERNEL(rope_f32);
-        GGML_METAL_ADD_KERNEL(rope_f16);
-        GGML_METAL_ADD_KERNEL(alibi_f32);
-        GGML_METAL_ADD_KERNEL(cpy_f32_f16);
-        GGML_METAL_ADD_KERNEL(cpy_f32_f32);
-        GGML_METAL_ADD_KERNEL(cpy_f16_f16);
-        GGML_METAL_ADD_KERNEL(concat);
-        GGML_METAL_ADD_KERNEL(sqr);
-
-#undef GGML_METAL_ADD_KERNEL
-    }
-
-#if TARGET_OS_OSX
     // print MTL GPU family:
     GGML_METAL_LOG_INFO("%s: GPU name:   %s\n", __func__, [[ctx->device name] UTF8String]);
 
@@ -887,7 +725,6 @@ static bool ggml_metal_supports_op(const struct ggml_metal_context * ctx, const 
 static bool ggml_metal_graph_compute(
         struct ggml_metal_context * ctx,
                struct ggml_cgraph * gf) {
-    @autoreleasepool {
 
     MTLComputePassDescriptor * edesc = MTLComputePassDescriptor.computePassDescriptor;
     edesc.dispatchType = MTLDispatchTypeSerial;
@@ -2410,10 +2247,7 @@ static bool ggml_metal_graph_compute(
 #endif
         }
 
-        if (encoder != nil) {
-            [encoder endEncoding];
-            encoder = nil;
-        }
+        [encoder endEncoding];
 
         [command_buffer commit];
     });
@@ -2433,7 +2267,6 @@ static bool ggml_metal_graph_compute(
     }
 
     return true;
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
