@@ -9925,11 +9925,6 @@ struct llama_context * llama_new_context_with_model(
             llama_token token = llama_token_bos(&ctx->model); // not actually used by llama_build_graph, but required to choose between token and embedding inputs graph
             ggml_cgraph * gf = llama_build_graph(*ctx, llama_batch_get_one(&token, n_tokens, n_past, 0));
 
-#ifdef GGML_USE_METAL
-            if (model->n_gpu_layers > 0) {
-                ggml_metal_log_set_callback(g_state.log_callback, g_state.log_callback_user_data);
-            }
-#endif
             // initialize scheduler with the worst-case graph
             ggml_backend_sched_init_measure(ctx->sched, gf);
             // note: the number of splits during measure is higher than during inference due to the kv shift
