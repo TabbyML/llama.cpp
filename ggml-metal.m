@@ -294,6 +294,10 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
             NSURL * libURL = [NSURL fileURLWithPath:libPath];
             GGML_METAL_LOG_INFO("%s: loading '%s'\n", __func__, [libPath UTF8String]);
             ctx->library = [ctx->device newLibraryWithURL:libURL error:&error];
+            if (error) {
+                GGML_METAL_LOG_ERROR("%s: error: %s\n", __func__, [[error description] UTF8String]);
+                return NULL;
+            }
         } else {
             GGML_METAL_LOG_INFO("%s: default.metallib not found, loading from source\n", __func__);
 
@@ -332,12 +336,11 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
                 //[options setFastMathEnabled:false];
 
                 ctx->library = [ctx->device newLibraryWithSource:src options:options error:&error];
+                if (error) {
+                    GGML_METAL_LOG_ERROR("%s: error: %s\n", __func__, [[error description] UTF8String]);
+                    return NULL;
+                }
             }
-        }
-
-        if (error) {
-            GGML_METAL_LOG_ERROR("%s: error: %s\n", __func__, [[error description] UTF8String]);
-            return NULL;
         }
     }
 #endif
@@ -686,7 +689,8 @@ static bool ggml_metal_supports_op(const struct ggml_metal_context * ctx, const 
             return true;
         case GGML_OP_MUL_MAT:
         case GGML_OP_MUL_MAT_ID:
-            return ctx->support_simdgroup_reduction;
+            return ctx->support_simdgroup_reduction &&
+                (op->src[0]->type != GGML_TYPE_F32 || op->src[1]->type == GGML_TYPE_F32);
         case GGML_OP_CPY:
         case GGML_OP_DUP:
         case GGML_OP_CONT:
