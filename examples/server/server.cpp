@@ -43,6 +43,7 @@ struct server_params {
     int32_t write_timeout = 600;
     bool slots_endpoint = true;
     bool metrics_endpoint = false;
+    int n_threads_http = -1;
 };
 
 bool server_verbose = false;
@@ -2012,6 +2013,7 @@ static void server_print_usage(const char *argv0, const gpt_params &params,
     printf("  -v, --verbose             verbose output (default: %s)\n", server_verbose ? "enabled" : "disabled");
     printf("  -t N, --threads N         number of threads to use during computation (default: %d)\n", params.n_threads);
     printf("  -tb N, --threads-batch N  number of threads to use during batch and prompt processing (default: same as --threads)\n");
+    printf("  --threads-http N          number of threads in the http server pool to process requests (default: hardware concurrency)\n");
     printf("  -c N, --ctx-size N        size of the prompt context (default: %d)\n", params.n_ctx);
     printf("  --rope-scaling {none,linear,yarn}\n");
     printf("                            RoPE frequency scaling method, defaults to linear unless specified by the model\n");
@@ -2080,8 +2082,8 @@ static void server_print_usage(const char *argv0, const gpt_params &params,
     printf("  --override-kv KEY=TYPE:VALUE\n");
     printf("                            advanced option to override model metadata by key. may be specified multiple times.\n");
     printf("                            types: int, float, bool. example: --override-kv tokenizer.ggml.add_bos_token=bool:false\n");
-    printf("  -gan N, --grp-attn-n N    set the group attention factor to extend context size through self-extend(default: 1=disabled), used together with group attention width `--grp-attn-w`");
-    printf("  -gaw N, --grp-attn-w N    set the group attention width to extend context size through self-extend(default: 512), used together with group attention factor `--grp-attn-n`");
+    printf("  -gan N, --grp-attn-n N    set the group attention factor to extend context size through self-extend(default: 1=disabled), used together with group attention width `--grp-attn-w`\n");
+    printf("  -gaw N, --grp-attn-w N    set the group attention width to extend context size through self-extend(default: 512), used together with group attention factor `--grp-attn-n`\n");
     printf("  --chat-template JINJA_TEMPLATE\n");
     printf("                            set custom jinja chat template (default: template taken from model's metadata)\n");
     printf("                            Note: only commonly used templates are accepted, since we don't have jinja parser\n");
@@ -2298,6 +2300,15 @@ static void server_params_parse(int argc, char **argv, server_params &sparams,
             }
             params.n_threads_batch = std::stoi(argv[i]);
         }
+        else if (arg == "--threads-http")
+        {
+            if (++i >= argc)
+            {
+                invalid_param = true;
+                break;
+            }
+            sparams.n_threads_http = std::stoi(argv[i]);
+        }
         else if (arg == "-b" || arg == "--batch-size")
         {
             if (++i >= argc)
@@ -2379,14 +2390,6 @@ static void server_params_parse(int argc, char **argv, server_params &sparams,
             }
 #else
             LOG_WARNING("llama.cpp was compiled without cuBLAS. It is not possible to set a tensor split.\n", {});
-#endif // GGML_USE_CUBLAS
-        }
-        else if (arg == "--no-mul-mat-q" || arg == "-nommq")
-        {
-#if defined(GGML_USE_CUBLAS) || defined(GGML_USE_SYCL)
-            params.mul_mat_q = false;
-#else
-            LOG_WARNING("warning: llama.cpp was compiled without cuBLAS. Disabling mul_mat_q kernels has no effect.\n", {});
 #endif // GGML_USE_CUBLAS
         }
         else if (arg == "--main-gpu" || arg == "-mg")
@@ -3448,6 +3451,11 @@ int main(int argc, char **argv)
         }
     }*/
     //);
+
+    if (sparams.n_threads_http > 0) {
+        log_data["n_threads_http"] =  std::to_string(sparams.n_threads_http);
+        svr.new_task_queue = [&sparams] { return new httplib::ThreadPool(sparams.n_threads_http); };
+    }
 
     LOG_INFO("HTTP server listening", log_data);
     // run the HTTP server in a thread - see comment below
