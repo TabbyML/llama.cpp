@@ -198,9 +198,6 @@ struct ggml_metal_context {
     bool should_capture_next_compute;
 };
 
-extern const char ggml_metal_file[];
-extern const size_t ggml_metal_file_len;
-
 // MSL code
 // TODO: move the contents here when ready
 //       for now it is easier to work in a separate file
@@ -281,20 +278,6 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
     id<MTLLibrary> metal_library;
 
     // load library
-#if 1
-    NSString * const msl_library_source = [[NSString alloc] initWithBytes: ggml_metal_file length: ggml_metal_file_len encoding: NSASCIIStringEncoding];
-    // compile from source string and show compile log
-    {
-        NSError * error = nil;
-
-        ctx->library = [ctx->device newLibraryWithSource:msl_library_source options:nil error:&error];
-        if (error) {
-            GGML_METAL_LOG_INFO("%s: error: %s\n", __func__, [[error description] UTF8String]);
-            return NULL;
-        }
-    }
-    [msl_library_source release];
-#elif GGML_SWIFT
     {
         NSBundle * bundle = nil;
 #ifdef SWIFT_PACKAGE
@@ -367,7 +350,6 @@ static struct ggml_metal_context * ggml_metal_init(int n_cb) {
             }
         }
     }
-#endif
 
     // print MTL GPU family:
     GGML_METAL_LOG_INFO("%s: GPU name:   %s\n", __func__, [[ctx->device name] UTF8String]);

@@ -189,7 +189,7 @@ if (LLAMA_METAL)
 
     message(STATUS "Metal framework found")
     set(GGML_HEADERS_METAL ggml-metal.h)
-    set(GGML_SOURCES_METAL ggml-metal.m ggml_metal_file.c)
+    set(GGML_SOURCES_METAL ggml-metal.m)
 
     add_compile_definitions(GGML_USE_METAL)
     if (LLAMA_METAL_NDEBUG)
